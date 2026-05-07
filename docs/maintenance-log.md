@@ -562,3 +562,18 @@
   - 将中英文文档进一步统一为：
     - `LLM_PROVIDER=glm` -> 填 `GLM_API_KEY`，无需新建并填写 `GEMINI_API_KEY`
     - `LLM_PROVIDER=gemini` -> 填 `GEMINI_API_KEY`，无需新建并填写 `GLM_API_KEY`
+
+### 2026-05-07 GLM 适配层图像编码改为标准 data URI 格式
+
+- 现象：
+  - 千问（Qwen）等 OpenAI 兼容多模态模型通过 `LLM_PROVIDER=glm` 路径接入时，hCaptcha 图像识别阶段会失败。
+  - 日志中图像请求发出后，千问 API 返回图像格式不支持的报错。
+- 根因判断：
+  - `_GLMAsyncModels._to_image_part()` 将图像 base64 编码后直接作为 `image_url.url` 的纯字符串值（无 `data:` 前缀），这是智谱 GLM API 恰好接受的格式，但不符合 OpenAI Vision API 标准。
+  - 千问等标准 OpenAI 兼容接口要求 `data:{mime_type};base64,{encoded}` 格式，纯 base64 会被拒绝。
+- 改动文件：
+  - `app/extensions/llm_adapter.py`
+  - `docs/maintenance-log.md`
+- 处理结果：
+  - `_to_image_part()` 的图像编码从纯 base64 字符串 → 标准 `data:{mime_type};base64,{encoded}` data URI 格式。
+  - 使千问及其他遵循 OpenAI Vision API 标准的多模态模型能通过 GLM 适配层正常接收 hCaptcha 图像输入。
