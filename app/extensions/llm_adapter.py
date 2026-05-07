@@ -699,7 +699,7 @@ class _GLMAsyncModels:
         self._storage = storage
 
     def _to_image_part(self, payload: bytes, mime_type: str) -> dict[str, Any]:
-        encoded = base64.b64encode(payload).decode("utf-8")
+        encoded = base64.b64encode(payload).decode("utf-8").replace("\n", "").replace("\r", "")
         return {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded}"}}
 
     def _part_to_content_item(self, part: Any) -> dict[str, Any] | None:
