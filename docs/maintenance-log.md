@@ -577,3 +577,19 @@
 - 处理结果：
   - `_to_image_part()` 的图像编码从纯 base64 字符串 → 标准 `data:{mime_type};base64,{encoded}` data URI 格式。
   - 使千问及其他遵循 OpenAI Vision API 标准的多模态模型能通过 GLM 适配层正常接收 hCaptcha 图像输入。
+
+### 2026-05-07 修复 base64 编码换行符导致千问 API 拒绝图像
+
+- 现象：
+  - GitHub Actions 运行时，千问 API 返回 400 错误：`The provided URL does not appear to be valid. Ensure it is correctly formatted.`
+  - hCaptcha 图像拖拽题（`image_drag_single`）识别失败，重试 3 次后抛出 `RetryError`。
+- 根因判断：
+  - `_GLMAsyncModels._to_image_part()` 使用 Python 的 `base64.b64encode()` 编码图像，该函数默认会在每 76 个字符后插入换行符 `\n`。
+  - 千问 API（及大多数 OpenAI 兼容接口）要求 data URI 中的 base64 字符串必须是连续的、不含换行符的。
+  - 换行符的存在导致千问 API 将 base64 字符串解析为无效 URL。
+- 改动文件：
+  - `app/extensions/llm_adapter.py`
+  - `docs/maintenance-log.md`
+- 处理结果：
+  - `_to_image_part()` 在 base64 编码后添加 `.replace("\n", "").replace("\r", "")` 移除所有换行符。
+  - 修复后 base64 字符串为连续无换行格式，千问 API 可正确解析 data URI。
