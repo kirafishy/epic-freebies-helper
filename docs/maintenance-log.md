@@ -593,3 +593,19 @@
 - 处理结果：
   - `_to_image_part()` 在 base64 编码后添加 `.replace("\n", "").replace("\r", "")` 移除所有换行符。
   - 修复后 base64 字符串为连续无换行格式，千问 API 可正确解析 data URI。
+
+### 2026-05-07 添加图像 mime_type 自动检测功能
+
+- 现象：
+  - hCaptcha 验证码图像可能是 JPEG、PNG 等多种格式，但代码中默认使用 `image/png` 作为 mime_type。
+  - mime_type 与实际图像格式不匹配可能导致部分 API 拒绝接收图像。
+- 根因判断：
+  - `_to_image_part()` 方法接收的 `mime_type` 参数来自上层调用，但上层默认使用 `"image/png"`。
+  - hCaptcha 生成的验证码图像实际格式可能是 JPEG（根据文件头 `\xff\xd8` 判断），但被错误标记为 `image/png`。
+- 改动文件：
+  - `app/extensions/llm_adapter.py`
+  - `docs/maintenance-log.md`
+- 处理结果：
+  - 新增 `_guess_image_mime_type()` 方法，根据图像文件头自动检测 mime_type（支持 JPEG、PNG、BMP、GIF、WebP）。
+  - `_to_image_part()` 在 mime_type 为空或默认 `image/png` 时，自动调用 `_guess_image_mime_type()` 检测实际格式。
+  - 确保发送给千问等 API 的 data URI 中 mime_type 与实际图像格式匹配。
