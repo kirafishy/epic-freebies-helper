@@ -698,7 +698,23 @@ class _GLMAsyncModels:
         self._settings = settings
         self._storage = storage
 
+    def _guess_image_mime_type(self, payload: bytes) -> str:
+        """根据图像文件头自动检测 mime_type"""
+        if payload[:2] == b'\xff\xd8':
+            return "image/jpeg"
+        if payload[:8] == b'\x89PNG\r\n\x1a\n':
+            return "image/png"
+        if payload[:2] == b'BM':
+            return "image/bmp"
+        if payload[:6] in (b'GIF87a', b'GIF89a'):
+            return "image/gif"
+        if payload[:4] == b'RIFF' and payload[8:12] == b'WEBP':
+            return "image/webp"
+        return "image/png"
+
     def _to_image_part(self, payload: bytes, mime_type: str) -> dict[str, Any]:
+        if not mime_type or mime_type == "image/png":
+            mime_type = self._guess_image_mime_type(payload)
         encoded = base64.b64encode(payload).decode("utf-8").replace("\n", "").replace("\r", "")
         return {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded}"}}
 
